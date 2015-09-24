@@ -1,0 +1,886 @@
+A)
+	1) 	CREATE TABLE Staff
+		(StaffID CHAR(6) CONSTRAINT pk_Staff_StaffID PRIMARY KEY,
+		  S_Forename VARCHAR2(50) CONSTRAINT nn_Staff_SForename NOT NULL
+								  CONSTRAINT ck_Staff_SForename CHECK (REGEXP_LIKE(S_Forename, '^[a-zA-Z-]+$')),
+		  S_Surname VARCHAR2(50) CONSTRAINT nn_Staff_SSurname NOT NULL
+								  CONSTRAINT ck_Staff_SSurname CHECK (REGEXP_LIKE(S_Surname, '^[a-zA-Z-]+$')),
+		  S_Address VARCHAR2(100) CONSTRAINT nn_Staff_SAddress NOT NULL,
+		  S_Tel CHAR(11) CONSTRAINT nn_Staff_STel NOT NULL
+						  CONSTRAINT ck_Staff_STel CHECK (REGEXP_LIKE(S_Tel, '^\d{11}')),
+		  S_Mob CHAR(11) CONSTRAINT nn_Staff_SMob NOT NULL
+						  CONSTRAINT ck_Staff_Smob CHECK (REGEXP_LIKE(S_Mob, '^\d{11}')),
+		  S_Email VARCHAR2(50) CONSTRAINT nn_Staff_SEmail NOT NULL
+								CONSTRAINT ck_Staff_SEmail CHECK (REGEXP_LIKE(S_Email, '^\w+([\.,]?\w+)*@\w+([\.,]?\w+)*(\.\w{2,3})+$')),
+		  S_JobTitle VARCHAR2(50) CONSTRAINT nn_Staff_JobTitle NOT NULL
+								  CONSTRAINT ck_Staff_JobTitle CHECK (REGEXP_LIKE(S_JobTitle, '^[a-zA-Z- ]+$')),
+		  S_Manager CHAR(6) CONSTRAINT fk_Staff_SManager REFERENCES Staff(StaffID),
+		  S_Salary DECIMAL(8,2) CONSTRAINT nn_Staff_Salary NOT NULL);
+		  
+		CREATE SEQUENCE Staff_ID_Sequence
+		INCREMENT BY 1
+		START WITH 1
+		MAXVALUE 999
+		CYCLE;
+		
+		CREATE TRIGGER StaffID
+		BEFORE INSERT ON Staff
+		FOR EACH ROW
+		DECLARE
+		  v_SeqNo INT;
+		BEGIN
+		  v_SeqNo := staff_id_sequence.nextval;
+
+		  IF v_SeqNo < 10
+		  THEN
+			:NEW.StaffID := UPPER(SUBSTR(:NEW.S_Surname,1,3)) || '00' || TO_CHAR(v_SeqNo);
+		  ELSIF v_SeqNo >= 10 AND v_SeqNo < 100
+		  THEN
+			:NEW.StaffID := UPPER(SUBSTR(:NEW.S_Surname,1,3)) || '0' || TO_CHAR(v_SeqNo);
+		  ELSE
+			:NEW.StaffID := UPPER(SUBSTR(:NEW.S_Surname,1,3)) || TO_CHAR(v_SeqNo);
+		  END IF;	
+		END;
+		
+	2)	CREATE TABLE StaffPaymentInfo
+		(AccountNo CHAR(8) CONSTRAINT ck_spi_accountno CHECK (REGEXP_LIKE(AccountNo, '^\d{8}')),
+		  Sort_Code CHAR(6) CONSTRAINT nn_spi_sortcode NOT NULL
+							CONSTRAINT ck_spi_sortcode CHECK (REGEXP_LIKE(Sort_Code, '^\d{6}')),
+		  StaffID CHAR(6) CONSTRAINT fk_spi_staffid REFERENCES Staff(StaffID),
+		  CONSTRAINT pk_spi_accountno_staffid PRIMARY KEY (AccountNo, StaffID));
+		  
+	3)	CREATE TABLE Client
+		(ClientID CHAR(7) CONSTRAINT pk_Client_ClientID PRIMARY KEY,
+		  C_Forename VARCHAR2(50) CONSTRAINT nn_client_cforename NOT NULL
+								  CONSTRAINT ck_client_cforename CHECK (REGEXP_LIKE(C_Forename, '^[a-zA-Z-]+$')),
+		  C_Surname VARCHAR2(50) CONSTRAINT nn_client_csurname NOT NULL
+								  CONSTRAINT ck_client_csurname CHECK (REGEXP_LIKE(C_Surname, '^[a-zA-Z-]+$')),
+		  C_Address VARCHAR2(100) CONSTRAINT nn_client_caddress NOT NULL,
+		  C_Tel CHAR(11) CONSTRAINT nn_client_ctel NOT NULL
+						  CONSTRAINT ck_client_ctel CHECK (REGEXP_LIKE(C_Tel, '^\d{11}')),
+		  C_Mob CHAR(11) CONSTRAINT nn_client_cmob NOT NULL
+						  CONSTRAINT ck_client_cmob CHECK (REGEXP_LIKE(C_Mob, '^\d{11}')),
+		  C_Email VARCHAR2(50) CONSTRAINT nn_client_cemail NOT NULL
+								CONSTRAINT ck_client_cemail CHECK (REGEXP_LIKE(C_Email, '^\w+([\.,]?\w+)*@\w+([\.,]?\w+)*(\.\w{2,3})+$')),
+		  Heard_About_Us_By VARCHAR2(100) CONSTRAINT nn_client_haub NOT NULL
+									CONSTRAINT ck_client_haub CHECK (REGEXP_LIKE(Heard_About_Us_By, '^(\w+([ ]?)+$')),
+		  Num_Orders_Placed INT,
+		  Last_Introduced CHAR(7) CONSTRAINT fk_client_li REFERENCES Client(ClientID),
+		  Introduce_Date DATE);
+		  
+		CREATE SEQUENCE ClientID_Sequence
+		INCREMENT BY 1
+		START WITH 1
+		MAXVALUE 999
+		CYCLE;
+		
+		CREATE TRIGGER ClientID
+		BEFORE INSERT ON Client
+		FOR EACH ROW
+		DECLARE
+		  v_SeqNo INT;
+		  v_SubSurname CHAR(3);
+		  v_SeqChar VARCHAR(3);
+		BEGIN
+		  v_SeqNo := clientid_sequence.nextval;
+		  v_SubSurname := UPPER(SUBSTR(:NEW.C_Surname,1,3));
+		  v_SeqChar := TO_CHAR(clientid_sequence.nextval);
+		  
+		  IF v_SeqNo < 10
+		  THEN
+			:NEW.ClientID := 'C' || v_SubSurname || '00' || v_SeqChar;
+		  ELSIF v_SeqNo >= 10 AND v_SeqNo < 100
+		  THEN
+			:NEW.ClientID := 'C' || v_SubSurname || '0' || v_SeqChar;
+		  ELSE
+			:NEW.ClientID := 'C' || v_SubSurname || v_SeqChar;
+		  END IF;  
+		END;
+		
+	4)	CREATE TABLE ClientBankInformation
+		(CardNo CHAR(16) CONSTRAINT ck_cbi_cardno CHECK (REGEXP_LIKE(CardNo, '^\d{16}')),
+		  Exp_Date CHAR(5) CONSTRAINT nn_cbi_expdate NOT NULL
+							CONSTRAINT ck_cbi_expdate CHECK (REGEXP_LIKE(Exp_Date, '^\d{2}*([/]\d{2})')),
+		  Sec_No CHAR(3) CONSTRAINT nn_cbi_secno NOT NULL
+						  CONSTRAINT ck_cbi_secno CHECK (REGEXP_LIKE(Sec_No, '^\d{3}')),
+		  ClientID CHAR(7) CONSTRAINT fk_cbi_clientid REFERENCES Client(ClientID),
+		  CONSTRAINT pk_cbi_cardno_clientid PRIMARY KEY (CardNo, ClientID));
+
+	5)	CREATE TABLE Child
+		(ChildID CHAR(8) CONSTRAINT pk_child_childid PRIMARY KEY,
+		  Child_Forename VARCHAR2(50) CONSTRAINT nn_child_chforename NOT NULL
+									  CONSTRAINT ck_child_chforename CHECK (REGEXP_LIKE(Child_Forename, '^[a-zA-Z-]+$')),
+		  Child_Surname VARCHAR2(50) CONSTRAINT nn_child_chsurname NOT NULL
+									  CONSTRAINT ck_child_chsurname CHECK (REGEXP_LIKE(Child_Surname, '^[a-zA-Z-]+$')),
+		  Child_Birthday DATE CONSTRAINT nn_child_chbirthday NOT NULL,
+		  Gender CHAR(1) CONSTRAINT nn_child_chgender NOT NULL
+						  CONSTRAINT ck_child_chgender CHECK (Gender IN ('M', 'F')));
+						  
+		CREATE SEQUENCE ChildID_Sequence
+		INCREMENT BY 1
+		START WITH 1
+		MAXVALUE 999
+		CYCLE;
+		
+		CREATE TRIGGER BirthdayCheck
+		BEFORE INSERT ON Child
+		FOR EACH ROW
+		BEGIN
+		  IF :NEW.Child_Birthday > SYSDATE
+		  THEN
+			RAISE_APPLICATION_ERROR(-2000, 'YOU HAVE ATTEMPTED TO INSERT A FUTURE DATE');
+		  END IF;
+		END;
+		
+		CREATE TRIGGER ChildID
+		BEFORE INSERT ON Child
+		FOR EACH ROW
+		FOLLOWS BirthdayCheck
+		DECLARE
+		  v_SeqNo INT;
+		  v_SubSurname CHAR(3);
+		  v_SeqChar VARCHAR(3);
+		BEGIN
+		  v_SeqNo := childid_sequence.nextval;
+		  v_SubSurname := UPPER(SUBSTR(:NEW.Child_Surname,1,3));
+		  v_SeqChar := TO_CHAR(v_SeqNo);
+		  
+		  IF v_SeqNo < 10
+		  THEN
+			:NEW.ChildID := 'CH' || v_SubSurname || '00' || v_SeqChar;
+		  ELSIF v_SeqNo >= 10 AND v_SeqNo < 100
+		  THEN
+			:NEW.ChildID := 'CH' || v_SubSurname || '0' || v_SeqChar;
+		  ELSE
+			:NEW.ChildID := 'CH' || v_SubSurname || v_SeqChar;
+		  END IF;	  
+		END;
+		
+	6)	CREATE TABLE ClientChild
+		(ClientID CHAR(7) CONSTRAINT fk_clientchild_clientid REFERENCES Client(ClientID),
+		  ChildID CHAR(8) CONSTRAINT fk_clientchild_childid REFERENCES Child(ChildID),
+		  Relationship VARCHAR2(20) CONSTRAINT nn_clientchild_relation NOT NULL
+									CONSTRAINT ck_clientchild_relation CHECK (REGEXP_LIKE(Relationship, '^[a-zA-Z- ]+$')),
+		  CONSTRAINT pk_clientchild_clientchildid PRIMARY KEY (ClientID, ChildID));
+		  
+	7)	CREATE TABLE Enquiry
+		(EnqID CHAR(6) CONSTRAINT pk_enquiry_enqid PRIMARY KEY,
+		  ClientID CHAR(7) CONSTRAINT fk_enquiry_clientid REFERENCES Client(ClientID)
+							CONSTRAINT nn_enquiry_clientid NOT NULL,
+		  Enq_Date DATE CONSTRAINT nn_enquiry_enqdate NOT NULL,
+		  Service_Date DATE CONSTRAINT nn_enquiry_servicedate NOT NULL);
+		  
+		CREATE SEQUENCE EnqID_Sequence
+		INCREMENT BY 1
+		START WITH 1
+		MAXVALUE 999
+		CYCLE;
+		
+		CREATE TRIGGER EnqID
+		BEFORE INSERT ON Enquiry
+		FOR EACH ROW
+		DECLARE
+		  v_SeqNo INT;
+		  v_SeqChar VARCHAR2(3);
+		BEGIN
+		  v_SeqNo := enqid_sequence.nextval;
+		  v_SeqChar := TO_CHAR(v_SeqNo);
+		  
+		  IF v_SeqNo < 10
+		  THEN
+			:NEW.EnqID := 'ENQ00' || v_SeqChar;
+		  ELSIF v_SeqNo >= 10 AND v_SeqNo < 100
+		  THEN
+			:NEW.EnqID := 'ENQ0' || v_SeqChar;
+		  ELSE
+			:NEW.EnqID := 'ENQ' || v_SeqChar;
+		  END IF;
+		END;
+			
+	8)	CREATE TABLE Theme
+		(ThemeID CHAR(4) CONSTRAINT pk_theme_themeid PRIMARY KEY,
+		  T_Name VARCHAR(50) CONSTRAINT nn_theme_tname NOT NULL
+							  CONSTRAINT ck_theme_tname CHECK (REGEXP_LIKE(T_Name, '^\w+([-,\. ]?\w+)')));	
+		
+		CREATE SEQUENCE ThemeID_Sequence
+		INCREMENT BY 1
+		START WITH 1
+		MAXVALUE 999
+		CYCLE;
+		
+		CREATE TRIGGER ThemeID
+		BEFORE INSERT ON Theme
+		FOR EACH ROW
+		DECLARE
+		  v_SeqNo INT;
+		  v_SeqChar VARCHAR2(3);
+		BEGIN
+		  v_SeqNo := themeid_sequence.nextval;
+		  v_SeqChar := TO_CHAR(v_SeqNo);
+		  
+		  IF v_SeqNo < 10
+		  THEN
+			:NEW.ThemeID := 'T00' || v_SeqChar;
+		  ELSIF v_SeqNo >= 10 AND v_SeqNo < 100
+		  THEN
+			:NEW.ThemeID := 'T0' || v_SeqChar;
+		  ELSE
+			:NEW.ThemeID := 'T' || v_SeqChar;
+		  END IF;
+		END;
+		
+	9)	CREATE TABLE CateringPackage
+		(PackageID CHAR(4) CONSTRAINT pk_cp_packageid PRIMARY KEY,
+		  P_Name VARCHAR2(50) CONSTRAINT nn_cp_pname NOT NULL
+							  CONSTRAINT ck_cp_pname CHECK (REGEXP_LIKE(P_Name, '^\w+([-,\. ]?\w+)')),
+		  P_Price DECIMAL(5,2) CONSTRAINT nn_cp_pprice NOT NULL,
+		  P_AllergyWarning VARCHAR2(50) CONSTRAINT ck_cp_allwarning CHECK (REGEXP_LIKE(P_AllergyWarning, '^\w+([-,\. ]?\w+)')),
+		  P_Desc VARCHAR2(100) CONSTRAINT nn_cp_pdesc NOT NULL
+								CONSTRAINT ck_cp_pdesc CHECK (REGEXP_LIKE(P_Desc, '^\w+([-,\. ]?\w+)')));
+								
+		CREATE SEQUENCE PackageID_Sequence
+		INCREMENT BY 1
+		START WITH 1
+		MAXVALUE 999
+		CYCLE;
+		
+		CREATE TRIGGER PackageID
+		BEFORE INSERT ON CateringPackage
+		FOR EACH ROW
+		DECLARE
+		  v_SeqNo INT;
+		  v_SeqChar VARCHAR2(3);
+		BEGIN
+		  v_SeqNo := packageid_sequence.nextval;
+		  v_SeqChar := TO_CHAR(v_SeqNo);
+		  
+		  IF v_SeqNo < 10
+		  THEN
+			:NEW.PackageID := 'P00' || v_SeqChar;
+		  ELSIF v_SeqNo >= 10 AND v_SeqNo < 100
+		  THEN
+			:NEW.PackageID := 'P0' || v_SeqChar;
+		  ELSE
+			:NEW.PackageID := 'P' || v_SeqChar;
+		  END IF;
+		END;
+		
+	10)	CREATE TABLE Equipment
+		( EquipmentID CHAR(4) CONSTRAINT pk_equipment_eid PRIMARY KEY,
+		  Equip_Name VARCHAR2(50) CONSTRAINT nn_equipment_ename NOT NULL,
+		  Equip_Type VARCHAR2(50) CONSTRAINT nn_equipment_etype NOT NULL,
+		  Equip_Price DECIMAL(6,2) CONSTRAINT nn_equipment_eprice NOT NULL);
+		  
+		CREATE SEQUENCE EquipmentID_Sequence
+		INCREMENT BY 1
+		START WITH 1
+		MAXVALUE 999
+		CYCLE;
+		
+		CREATE TRIGGER EquipmentID
+		BEFORE INSERT ON Equipment
+		FOR EACH ROW
+		DECLARE
+		  v_SeqNo INT;
+		  v_SeqChar VARCHAR2(3);
+		BEGIN
+		  v_SeqNo := equipmentid_sequence.nextval;
+		  v_SeqChar := TO_CHAR(v_SeqNo);
+		  
+		  IF v_SeqNo < 10
+		  THEN
+			:NEW.EquipmentID := 'E00' || v_SeqChar;
+		  ELSIF v_SeqNo >= 10 AND v_SeqNo < 100
+		  THEN
+			:NEW.EquipmentID := 'E0' || v_SeqChar;
+		  ELSE
+			:NEW.EquipmentID := 'E' || v_SeqChar;
+		  END IF;
+		END;
+		
+	11)	CREATE TABLE Entertainer
+		( EntertainerID CHAR(6) CONSTRAINT pk_entertainer_eid PRIMARY KEY,
+		  E_Type VARCHAR2(50) CONSTRAINT nn_entertainer_etype NOT NULL,
+		  E_Price DECIMAL(5,2) CONSTRAINT nn_entertainer_eprice NOT NULL,
+		  E_Active_YN INT CONSTRAINT nn_entertainer_active NOT NULL
+						  CONSTRAINT ck_entertainer_active CHECK (E_Active_YN IN (0, 1)));
+						  
+		CREATE SEQUENCE EntertainerID_Sequence
+		INCREMENT BY 1
+		START WITH 1
+		MAXVALUE 999
+		CYCLE;
+		
+		CREATE TRIGGER EntertainerID
+		BEFORE INSERT ON Entertainer
+		FOR EACH ROW
+		DECLARE
+		  v_SeqNo INT;
+		  v_SeqChar VARCHAR2(3);
+		BEGIN
+		  v_SeqNo := entertainerid_sequence.nextval;
+		  v_SeqChar := TO_CHAR(v_SeqNo);
+		  
+		  IF v_SeqNo < 10
+		  THEN
+			:NEW.EntertainerID := 'ENT00' || v_SeqChar;
+		  ELSIF v_SeqNo >= 10 AND v_SeqNo < 100
+		  THEN
+			:NEW.EntertainerID := 'ENT0' || v_SeqChar;
+		  ELSE
+			:NEW.EntertainerID := 'ENT' || v_SeqChar;
+		  END IF;
+		END;
+		
+	12) CREATE TABLE OrderPlaced
+		( OrderID INT CONSTRAINT pk_order_orderid PRIMARY KEY,
+		  EnqID CHAR(6) CONSTRAINT nn_order_enqid NOT NULL
+						CONSTRAINT fk_order_enqid REFERENCES Enquiry(EnqID),
+		  ClientID CHAR(7) CONSTRAINT nn_order_clientid NOT NULL
+							CONSTRAINT fk_order_clientid REFERENCES Client(ClientID),
+		  ThemeID CHAR(4) CONSTRAINT nn_order_themeid NOT NULL
+						  CONSTRAINT fk_order_themeid REFERENCES Theme(ThemeID),
+		  PackageID CHAR(4) CONSTRAINT nn_order_pid NOT NULL
+							CONSTRAINT fk_order_pid REFERENCES CateringPackage(PackageID),
+		  Start_Time TIMESTAMP CONSTRAINT nn_order_stime NOT NULL,
+		  End_Time TIMESTAMP CONSTRAINT nn_order_etime NOT NULL,
+		  Order_Date DATE CONSTRAINT nn_order_odate NOT NULL,
+		  Guest_No INT CONSTRAINT nn_order_guestno NOT NULL
+						CONSTRAINT ck_order_guestno CHECK (Guest_No > 0),
+		  Spec_Instructions VARCHAR2(100),
+		  Verified_YN SMALLINT CONSTRAINT nn_order_yn NOT NULL
+							  CONSTRAINT ck_order_yn CHECK (Verified_YN IN (0,1)));
+							  
+		CREATE SEQUENCE OrderID_Sequence
+		INCREMENT BY 1
+		START WITH 1
+		MAXVALUE 999999999999999999999999999
+		NOCYCLE;
+		
+		CREATE TRIGGER OrderVerified
+		BEFORE INSERT ON OrderPlaced
+		FOR EACH ROW
+		BEGIN
+		  :NEW.Verified_YN := 0;
+		END;
+		
+		CREATE TRIGGER OrderID
+		BEFORE INSERT ON OrderPlaced
+		FOR EACH ROW
+		FOLLOWS OrderVerified
+		BEGIN
+		  :NEW.OrderID := orderid_sequence.nextval;
+		END;
+		
+		CREATE TRIGGER Client_OrderPlaced
+		AFTER INSERT ON OrderPlaced
+		FOR EACH ROW
+		DECLARE
+		  v_Count INT;
+		BEGIN
+		    SELECT CASE WHEN num_orders_placed >= 1 THEN num_orders_placed ELSE 0 END CASE
+			INTO v_Count
+			FROM Client
+			WHERE ClientID = :NEW.ClientID;
+			
+			UPDATE Client
+			SET Num_Orders_Placed = (v_Count + 1)
+			WHERE ClientID = :NEW.ClientID;
+		END;
+		
+	13)	CREATE TABLE OrderedEquipment 
+		( OrderID INT CONSTRAINT fk_oequip_orderid REFERENCES OrderPlaced(OrderID),
+		  EquipmentID CHAR(4) CONSTRAINT fk_oequip_equipid REFERENCES Equipment(EquipmentID),
+		  CONSTRAINT pk_oequip_orderid_equipid PRIMARY KEY (OrderID, EquipmentID));
+		  
+	14)	CREATE TABLE OrderedEntertainer
+		( OrderID INT CONSTRAINT fk_oe_orderid REFERENCES OrderPlaced(OrderID),
+		  EntertainerID CHAR(6) CONSTRAINT fk_oe_entid REFERENCES Entertainer(EntertainerID),
+		  Start_Time TIMESTAMP CONSTRAINT nn_oe_stime NOT NULL,
+		  End_Time TIMESTAMP CONSTRAINT nn_oe_etime NOT NULL,
+		  CONSTRAINT pk_oe_orderid_entid PRIMARY KEY (OrderID, EntertainerID));
+		  
+	15)	CREATE TABLE OrderChild
+		( OrderID INT CONSTRAINT fk_orderchild_orderid REFERENCES OrderPlaced(OrderID),
+		  ChildID CHAR(8) CONSTRAINT fk_orderchild_childid REFERENCES Child(ChildID),
+		  CONSTRAINT pk_orderchild_orderid_childid PRIMARY KEY (OrderID, ChildID));
+		  
+	16)	CREATE TABLE BRUInvoice
+		( BRUID CHAR(6) CONSTRAINT pk_bru_bruid PRIMARY KEY,
+		  BRU_Cost DECIMAL(6,2) CONSTRAINT nn_bru_cost NOT NULL,
+		  BRU_ServiceDate DATE CONSTRAINT nn_bru_sdate NOT NULL,
+		  BRU_Date DATE CONSTRAINT nn_bru_date NOT NULL,
+		  BRU_Deadline DATE CONSTRAINT nn_bru_deadline NOT NULL,
+		  BRU_Paid_Date DATE,
+		  BRU_PaidBy CHAR(6) CONSTRAINT fk_bru_paidby REFERENCES Staff(StaffID));
+		  
+		CREATE SEQUENCE BRUID_Sequence
+		INCREMENT BY 1
+		START WITH 1
+		MAXVALUE 999
+		CYCLE;
+		
+		CREATE TRIGGER BRUID
+		BEFORE INSERT ON BRUInvoice
+		FOR EACH ROW
+		DECLARE
+		  v_SeqNo INT;
+		  v_SeqChar VARCHAR2(3);
+		BEGIN
+		  v_SeqNo := bruid_sequence.nextval;
+		  v_SeqChar := TO_CHAR(v_SeqNo);
+		  
+		  IF v_SeqNo < 10
+		  THEN
+			:NEW.BRUID := 'BRU00' || v_SeqChar;
+		  ELSIF v_SeqNo >= 10 AND v_SeqNo < 100
+		  THEN
+			:NEW.BRUID := 'BRU0' || v_SeqChar;
+		  ELSE
+			:NEW.BRUID := 'BRU' || v_SeqChar;
+		  END IF;
+		END;
+		
+	17)	CREATE TABLE Invoice
+		( InvoiceID CHAR(4) CONSTRAINT pk_invoice_invoiceid PRIMARY KEY,
+		  OrderID INT CONSTRAINT nn_invoice_orderid NOT NULL
+					  CONSTRAINT fk_invoice_orderid REFERENCES OrderPlaced(OrderID),
+		  Invoice_Date DATE CONSTRAINT nn_invoice_idate NOT NULL,
+		  Invoice_Deadline DATE CONSTRAINT nn_invoice_ideadline NOT NULL,
+		  Invoice_Paid_Date DATE,
+		  Issued_By CHAR(6) CONSTRAINT nn_invoice_issued NOT NULL
+							CONSTRAINT fk_invoice_issued REFERENCES Staff(StaffID),
+		  Invoice_Type VARCHAR2(15) CONSTRAINT nn_invoice_type NOT NULL
+									CONSTRAINT ck_invoice_type CHECK (Invoice_Type IN ('Deposit', 'Remainder')));
+								
+		CREATE SEQUENCE InvoiceID_Sequence
+		INCREMENT BY 1
+		START WITH 1
+		MAXVALUE 999
+		CYCLE;
+		
+		CREATE TRIGGER InvoiceID
+		BEFORE INSERT ON Invoice
+		FOR EACH ROW
+		DECLARE
+		  v_SeqNo INT;
+		  v_SeqChar VARCHAR2(3);
+		BEGIN
+		  v_SeqNo := invoiceid_sequence.nextval;
+		  v_SeqChar := TO_CHAR(v_SeqNo);
+		  
+		  
+		  IF v_SeqNo < 10
+		  THEN
+			:NEW.InvoiceID := 'I00' || v_SeqChar;
+		  ELSIF v_SeqNo >= 10 AND v_SeqNo < 100
+		  THEN
+			:NEW.InvoiceID := 'I0' || v_SeqChar;
+		  ELSE
+			:NEW.InvoiceID := 'I' || v_SeqChar;
+		  END IF;
+		END;
+		
+B)
+	1)	INSERT ALL
+		  INTO Staff (s_forename, s_surname, s_address, s_tel, s_mob, s_email, s_jobtitle, s_manager, s_salary)
+		  VALUES ('John', 'Smith', '88 Some Street, Some Town, Some City, S0 MM3', '02094126475', '07662163495', 'j.smith@partyon.co.uk', 'CEO', null, 70000)
+	      INTO Staff (s_forename, s_surname, s_address, s_tel, s_mob, s_email, s_jobtitle, s_manager, s_salary)
+		  VALUES ('Nigel', 'Keenan', '56 Wembley Way, Wembley, London, NW8 5FF', '02079465612', '07451632590', 'n.keenan@partyon.co.uk', 'Sales Manager', null, 50000)
+		  INTO Staff (s_forename, s_surname, s_address, s_tel, s_mob, s_email, s_jobtitle, s_manager, s_salary)
+		  VALUES ('Debbie', 'Campana', '98 Fryent Way, Kingsbury, London, NW9 9LT', '02076103465', '07496586175', 'd.campana@partyon.co.uk', 'HR Manager', null, 50000)
+		  INTO Staff (s_forename, s_surname, s_address, s_tel, s_mob, s_email, s_jobtitle, s_manager, s_salary)
+		  VALUES ('Victor', 'Moses', '123 Fake Street, Fake Town, Fake City, F4 3KE', '02054769822', '07416983264', 'v.moses@partyon.co.uk', 'Sales Rep', null, 25000)
+		SELECT 1 FROM DUAL;
+		
+	2)	INSERT ALL
+		  INTO StaffPaymentInfo (AccountNo, Sort_Code, StaffID)
+		  VALUES ('12345978', '123456', 'SMI014')
+		  INTO StaffPaymentInfo (AccountNo, Sort_Code, StaffID)
+		  VALUES ('87654321', '654321', 'KEE015')
+		  INTO StaffPaymentInfo (AccountNo, Sort_Code, StaffID)
+		  VALUES ('78465214', '174653', 'CAM016')
+		  INTO StaffPaymentInfo (AccountNo, Sort_Code, StaffID)
+		  VALUES ('46579514', '465316', 'MOS017')
+		SELECT 1 FROM DUAL;
+		
+	3)	INSERT ALL
+		  INTO Theme (T_Name)
+		  VALUES ('Supheroes')
+		  INTO Theme (T_Name)
+		  VALUES ('Football')
+		  INTO Theme (T_Name)
+		  VALUES ('Disney')
+		  INTO Theme (T_Name)
+		  VALUES ('Pirates')
+		  INTO Theme (T_Name)
+		  VALUES ('Wrestling')
+		SELECT 1 FROM DUAL;
+		
+	4)	INSERT ALL
+		  INTO CateringPackage (p_name, p_price, p_allergywarning, p_desc)
+		  VALUES ('Sausage Roll and Crisps', 10, null, 'A simple catering package serving sausage rolls and crisps.')
+		  INTO CateringPackage (p_name, p_price, p_allergywarning, p_desc)
+		  VALUES ('Deluxe Silver Service', 75, 'Not suitable for those with lactose intolerance.', 'Serves Roast Chicken, roast potatoes with vegetables. Includes starters and dessert.')
+		  INTO CateringPackage (p_name, p_price, p_allergywarning, p_desc)
+		  VALUES ('Indian', 52, 'May contain nuts and lactose.', 'Starters include Sheekh Kebabs and chicken wings. Main is Butter Chicken with rice and butter naan.')
+		  INTO CateringPackage (p_name, p_price, p_allergywarning, p_desc)
+		  VALUES ('Chinese', 52, 'May contain nuts.', 'Birds Nest for starters with prawn crackers. Chicken kebab skewers served with pork as main.')
+		SELECT 1 FROM DUAL;
+		
+	5)	INSERT ALL
+		  INTO Equipment (Equip_name, equip_type, equip_price)
+		  VALUES ('Trampoline', 'Acrobatic', 30)
+		  INTO Equipment (Equip_name, equip_type, equip_price)
+		  VALUES ('Large Bouncy Castle', 'Bouncy Castle', 60)
+		  INTO Equipment (Equip_name, equip_type, equip_price)
+		  VALUES ('Small Bouncy Castle', 'Bouncy Castle', 32)
+		  INTO Equipment (Equip_name, equip_type, equip_price)
+		  VALUES ('Teacups', 'Fairground', 102)
+		  INTO Equipment (Equip_name, equip_type, equip_price)
+		  VALUES ('Carousel', 'Fairground', 225)
+		SELECT 1 FROM DUAL;
+		
+	6)	INSERT ALL
+		  INTO Entertainer (E_type, e_price, e_active_yn)
+		  VALUES ('DJ', 150, 1)
+		  INTO Entertainer (E_type, e_price, e_active_yn)
+		  VALUES ('Makeup Artist', 110, 1)
+		  INTO Entertainer (E_type, e_price, e_active_yn)
+		  VALUES ('Male Singer', 180, 1)
+		  INTO Entertainer (E_type, e_price, e_active_yn)
+		  VALUES ('Female Singer', 180, 1)
+		  INTO Entertainer (E_type, e_price, e_active_yn)
+		  VALUES ('Dinsey Characters', 200, 1)
+		  INTO Entertainer (E_type, e_price, e_active_yn)
+		  VALUES ('Marvel Superheroes', 200, 1)
+		  INTO Entertainer (E_type, e_price, e_active_yn)
+		  VALUES ('DC Superheroes', 200, 1)
+		SELECT 1 FROM DUAL;
+		
+	7)	INSERT ALL
+		  INTO Client (C_Forename, c_surname, c_address, c_tel, c_mob, c_email, heard_about_us_by, num_orders_placed, last_introduced, introduce_date)
+		  VALUES ('Gwen', 'Stacy', '55 Covent Gardens, King''s Cross, London, WC2 5KE', '02046137942', '07461789451', 'g.stacy@gmail.com', 'Google Search', 0, null, null)
+		  INTO Client (C_Forename, c_surname, c_address, c_tel, c_mob, c_email, heard_about_us_by, num_orders_placed, last_introduced, introduce_date)
+		  VALUES ('Terry', 'Stevens', '48 Forty Lane, Leicester, LE1 7YU', '01146795315', '07946134658', 'terry_s@yahoo.com', 'Friend', 0, null, null)
+		  INTO Client (C_Forename, c_surname, c_address, c_tel, c_mob, c_email, heard_about_us_by, num_orders_placed, last_introduced, introduce_date)
+		  VALUES ('Hans', 'Zimmer', '82 Broadway Street, Harrow, London', '02047613588', '07461238955', 'hans@zimmer.com', 'Internet Search', 0, null, null)
+		  INTO Client (C_Forename, c_surname, c_address, c_tel, c_mob, c_email, heard_about_us_by, num_orders_placed, last_introduced, introduce_date)
+		  VALUES ('Riyaan', 'Patel', '79 Evelyn Gardens, Kingsbury, London, NW9 0TE', '02076159666', '07416985222', 'r.patel@googlemail.com', 'Website', 0, null, null)
+		  INTO Client (C_Forename, c_surname, c_address, c_tel, c_mob, c_email, heard_about_us_by, num_orders_placed, last_introduced, introduce_date)
+		  VALUES ('Megan', 'Thompson', '302 Mollison Way, Watford, London, WA6 8UI', '06457943154', '07986215463', 'meg_thompson@hotmail.com', 'Google Search', 0, null, null)
+		  INTO Client (C_Forename, c_surname, c_address, c_tel, c_mob, c_email, heard_about_us_by, num_orders_placed, last_introduced, introduce_date)
+		  VALUES ('Meera', 'Chauhan', '165 Woodcock Hill, Harrow, London, HA4 7BQ', '02079876562', '07994963263', 'mchauhan@outlook.com', 'Website', 0, null, null)
+		SELECT 1 FROM DUAL;
+		
+	8)	INSERT ALL
+		  INTO Child (child_forename, child_surname, child_birthday, gender)
+		  VALUES ('Regan', 'Stacy', '05-MAY-05', 'M')
+		  INTO Child (child_forename, child_surname, child_birthday, gender)
+		  VALUES ('Rachel', 'Stevens', '07-AUG-10', 'F')
+		  INTO Child (child_forename, child_surname, child_birthday, gender)
+		  VALUES ('Tommy', 'Zimmer', '18-OCT-13', 'M')
+		  INTO Child (child_forename, child_surname, child_birthday, gender)
+		  VALUES ('Vanessa', 'Patel', '08-MAR-08', 'F')
+		  INTO Child (child_forename, child_surname, child_birthday, gender)
+		  VALUES ('Ria', 'Patel', '08-MAR-08', 'F')
+		  INTO Child (child_forename, child_surname, child_birthday, gender)
+		  VALUES ('Ronald', 'Lincoln', '27-FEB-03', 'M')
+		  INTO Child (child_forename, child_surname, child_birthday, gender)
+		  VALUES ('Sai', 'Chauhan', '09-Sep-03', 'M')
+		SELECT 1 FROM DUAL;
+		
+	9)	INSERT ALL
+		  INTO ClientChild (ClientId, ChildID, Relationship)
+		  VALUES ('CSTA018', 'CHSTA008', 'Mother')
+		  INTO ClientChild (ClientId, ChildID, Relationship)
+		  VALUES ('CSTE020', 'CHSTE009', 'Father')
+		  INTO ClientChild (ClientId, ChildID, Relationship)
+		  VALUES ('CZIM022', 'CHZIM010', 'Father')
+		  INTO ClientChild (ClientId, ChildID, Relationship)
+		  VALUES ('CPAT024', 'CHPAT011', 'Father')
+		  INTO ClientChild (ClientId, ChildID, Relationship)
+		  VALUES ('CPAT024', 'CHPAT012', 'Father')
+		  INTO ClientChild (ClientId, ChildID, Relationship)
+		  VALUES ('CTHO026', 'CHLIN013', 'Mother')
+		  INTO ClientChild (ClientId, ChildID, Relationship)
+		  VALUES ('CCHA028', 'CHCHA014', 'Mother')
+		SELECT 1 FROM DUAL;
+	
+	10)	INSERT ALL
+		  INTO ClientBankInformation (CARDNO, Exp_date, sec_no, clientid)
+		  VALUES ('1234567891123456', '11/18', '554', 'CSTA018')
+		  INTO ClientBankInformation (CARDNO, Exp_date, sec_no, clientid)
+		  VALUES ('6543211987654321', '01/16', '468', 'CSTE020')
+		  INTO ClientBankInformation (CARDNO, Exp_date, sec_no, clientid)
+		  VALUES ('4615794236541285', '08/20', '795', 'CZIM022')
+		  INTO ClientBankInformation (CARDNO, Exp_date, sec_no, clientid)
+		  VALUES ('7861346986102463', '05/17', '879', 'CPAT024')
+		  INTO ClientBankInformation (CARDNO, Exp_date, sec_no, clientid)
+		  VALUES ('8461358764235614', '06/16', '032', 'CTHO026')
+		  INTO ClientBankInformation (CARDNO, Exp_date, sec_no, clientid)
+		  VALUES ('9864357861023496', '05/17', '654', 'CCHA028')
+		SELECT 1 FROM DUAL;
+		
+	11)	INSERT ALL
+		  INTO Enquiry (Clientid, enq_date, service_date)
+		  VALUES ('CSTA030', '02-JAN-15', '09-MAY-15')
+		  INTO Enquiry (Clientid, enq_date, service_date)
+		  VALUES ('CSTE032', '02-JAN-15', '08-AUG-15')
+		  INTO Enquiry (Clientid, enq_date, service_date)
+		  VALUES ('CZIM034', '03-JAN-15', '17-OCT-15')
+		  INTO Enquiry (Clientid, enq_date, service_date)
+		  VALUES ('CSTE032', '05-JAN-15', '01-OCT-15')
+		  INTO Enquiry (Clientid, enq_date, service_date)
+		  VALUES ('CPAT036', '05-JAN-15', '07-MAR-15')
+		  INTO Enquiry (Clientid, enq_date, service_date)
+		  VALUES ('CTHO038', '11-JAN-15', '28-FEB-15')
+		  INTO Enquiry (Clientid, enq_date, service_date)
+		  VALUES ('CCHA040', '15-JAN-15', '12-SEP-15')
+		  INTO Enquiry (Clientid, enq_date, service_date)
+		  VALUES ('CPAT036', '26-JAN-15', '08-MAR-15')
+		SELECT 1 FROM DUAL;
+		
+	12)	INSERT ALL
+		  INTO OrderPlaced (enqid, clientid, themeid, packageid, start_time, end_time, order_date, guest_no, spec_instructions)
+		  VALUES ('ENQ003', 'CSTE032', 'T006', 'P012', '08-AUG-15 19:00:00.00', '09-AUG-15 00:00:00.00', '02-FEB-15', 120, null)
+		  INTO OrderPlaced (enqid, clientid, themeid, packageid, start_time, end_time, order_date, guest_no, spec_instructions)
+		  VALUES ('ENQ004', 'CZIM034', 'T004', 'P013', '17-OCT-15 19:30:00.00', '18-OCT-15 02:00:00.00', '02-FEB-15', 200, null)
+		  INTO OrderPlaced (enqid, clientid, themeid, packageid, start_time, end_time, order_date, guest_no, spec_instructions)
+		  VALUES ('ENQ009', 'CPAT036', 'T007', 'P013', '08-MAR-15 19:30:00.00', '09-MAR-15 01:00:00.00', '10-FEB-15', 200, null)
+		  INTO OrderPlaced (enqid, clientid, themeid, packageid, start_time, end_time, order_date, guest_no, spec_instructions)
+		  VALUES ('ENQ007', 'CTHO038', 'T008', 'P014', '28-FEB-15 18:30:00.00', '01-MAR-15 00:00:00.00', '11-FEB-15', 70, null)
+		SELECT 1 FROM DUAL;
+		
+	13)	INSERT ALL
+		  INTO OrderChild (OrderID, ChildID)
+		  VALUES (11, 'CHSTE016')
+		  INTO OrderChild (OrderID, ChildID)
+		  VALUES (12, 'CHZIM017')
+		  INTO OrderChild (OrderID, ChildID)
+		  VALUES (13, 'CHPAT018')
+		  INTO OrderChild (OrderID, ChildID)
+		  VALUES (13, 'CHPAT019')
+		  INTO OrderChild (OrderID, ChildID)
+		  VALUES (14, 'CHLIN020')
+		SELECT 1 FROM DUAL;
+		
+	14)	INSERT ALL
+		  INTO OrderedEquipment (EQUIPMENTID, OrderID)
+		  VALUES ('E002', 12)
+		  INTO OrderedEquipment (EQUIPMENTID, OrderID)
+		  VALUES ('E003', 12)
+		  INTO OrderedEquipment (EQUIPMENTID, OrderID)
+		  VALUES ('E004', 11)
+		  INTO OrderedEquipment (EQUIPMENTID, OrderID)
+		  VALUES ('E005', 11)
+		  INTO OrderedEquipment (EQUIPMENTID, OrderID)
+		  VALUES ('E006', 11)
+		  INTO OrderedEquipment (EQUIPMENTID, OrderID)
+		  VALUES ('E003', 14)
+		SELECT 1 FROM DUAL;
+		
+	15)	INSERT ALL
+		  INTO OrderedEntertainer (ENTERTAINERID, orderid, start_time, end_time)
+		  VALUES ('ENT003', 12, '17-OCT-15 20:30:00.00', '17-OCT-15 22:30:00.00')
+		  INTO OrderedEntertainer (ENTERTAINERID, orderid, start_time, end_time)
+		  VALUES ('ENT007', 12, '17-OCT-15 20:30:00.00', '17-OCT-15 22:30:00.00')
+		  INTO OrderedEntertainer (ENTERTAINERID, orderid, start_time, end_time)
+		  VALUES ('ENT003', 11, '08-AUG-15 19:30:00.00', '08-AUG-15 23:00:00.00')
+		  INTO OrderedEntertainer (ENTERTAINERID, orderid, start_time, end_time)
+		  VALUES ('ENT005', 11, '08-AUG-15 20:30:00.00', '08-AUG-15 22:30:00.00')
+		  INTO OrderedEntertainer (ENTERTAINERID, orderid, start_time, end_time)
+		  VALUES ('ENT006', 11, '08-AUG-15 19:30:00.00', '08-AUG-15 23:00:00.00')
+		  INTO OrderedEntertainer (ENTERTAINERID, orderid, start_time, end_time)
+		  VALUES ('ENT003', 13, '08-MAR-15 19:30:00.00', '08-MAR-15 21:30:00.00')
+		  INTO OrderedEntertainer (ENTERTAINERID, orderid, start_time, end_time)
+		  VALUES ('ENT002', 14, '28-FEB-15 19:00:00.00', '01-MAR-15 00:00:00.00')
+		SELECT 1 FROM DUAL;
+		
+	16)	INSERT ALL
+		  INTO Invoice (orderid, invoice_date, invoice_deadline, invoice_paid_date, issued_by, invoice_type)
+		  VALUES (11, '02-FEB-15', '11-FEB-15', '05-FEB-15', 'MOS017', 'Deposit')
+		  INTO Invoice (orderid, invoice_date, invoice_deadline, invoice_paid_date, issued_by, invoice_type)
+		  VALUES (12, '02-FEB-15', '11-FEB-15', '02-FEB-15', 'MOS017', 'Deposit')
+		  INTO Invoice (orderid, invoice_date, invoice_deadline, invoice_paid_date, issued_by, invoice_type)
+		  VALUES (13, '10-FEB-15', '19-FEB-15', '15-FEB-15', 'MOS017', 'Deposit')
+		  INTO Invoice (orderid, invoice_date, invoice_deadline, invoice_paid_date, issued_by, invoice_type)
+		  VALUES (14, '11-FEB-15', '20-FEB-15', '11-FEB-15', 'MOS017', 'Deposit')
+		SELECT 1 FROM DUAL;
+		
+	17)	INSERT ALL
+		  INTO BRUInvoice (bru_cost, bru_servicedate, bru_date, bru_deadline, bru_paid_date, bru_paidby)
+		  VALUES (620, '17-OCT-15', '20-OCT-15', '27-OCT-15', null, null)
+		  INTO BRUInvoice (bru_cost, bru_servicedate, bru_date, bru_deadline, bru_paid_date, bru_paidby)
+		  VALUES (1445, '08-AUG-15', '11-AUG-15', '18-AUG-15', null, null)
+		  INTO BRUInvoice (bru_cost, bru_servicedate, bru_date, bru_deadline, bru_paid_date, bru_paidby)
+		  VALUES (220, '08-MAR-15', '11-MAR-15', '18-MAR-15', null, null)
+		  INTO BRUInvoice (bru_cost, bru_servicedate, bru_date, bru_deadline, bru_paid_date, bru_paidby)
+		  VALUES (750, '28-FEB-15', '03-MAR-15', '10-MAR-15', null, null)
+		SELECT 1 FROM DUAL;
+		
+C)
+	CREATE VIEW vw_Orders
+	AS
+	SELECT  DISTINCT b.OrderID AS "Order ID", a.ClientID AS "Client ID", a.C_Forename || ' ' || a.C_Surname AS "Client's Name",
+			d.Child_Forename || ' ' || d.Child_Surname AS "Child's Name", SUBSTR(b.Start_Time, 1, 9) AS "Party Date",
+			SUBSTR(b.Start_Time, 10, 6) AS "Start Time", SUBSTR(b.End_Time, 10, 6) AS "End_Time", b.Guest_No AS "Number of Guests",
+			e.T_Name AS "Theme", f.P_Name AS "Catering Package", b.Spec_Instructions AS "Special Instructions",
+			b.Order_Date AS "Placed On", CASE b.Verified_YN WHEN 1 THEN 'Yes' WHEN 0 THEN 'No' END AS "Order Verified?",
+			CASE k.Invoice_Paid_Date WHEN NULL THEN 'No' ELSE 'Yes' END AS "Deposit Paid?"
+	FROM Client a
+	INNER JOIN OrderPlaced b ON a.ClientID = b.ClientID
+	INNER JOIN OrderChild c ON b.OrderID = c.OrderID
+	INNER JOIN Child d ON c.ChildID = d.ChildID
+	INNER JOIN Theme e ON b.ThemeID = e.ThemeID
+	INNER JOIN CateringPackage f ON b.PackageID = f.PackageID
+	INNER JOIN Invoice k ON b.OrderID = k.OrderID
+	WHERE k.Invoice_Type = 'Deposit'
+	ORDER BY b.OrderID;
+	
+D)
+	1)	SELECT  a.ClientID, a.C_Forename, a.C_Surname, b.ChildID, c.Child_Forename, c.Child_Surname, c.Gender, b.Relationship,
+				COUNT(d.ChildID) AS "Number of Orders for Child" 
+		FROM Client a
+		INNER JOIN ClientChild b ON a.ClientID = b.ClientID
+		INNER JOIN Child c ON b.ChildID = c.ChildID
+		LEFT OUTER JOIN OrderChild d ON c.ChildID = d.ChildID
+		LEFT OUTER JOIN OrderPlaced e ON a.ClientID = e.ClientID AND d.OrderID = e.OrderID
+		GROUP BY a.ClientID, a.C_Forename, a.C_Surname, b.ChildID, c.Child_Forename, c.Child_Surname, c.Gender, b.Relationship
+		ORDER BY a.ClientID;
+		
+	2)	SELECT a.ClientID, a.C_Forename, a.C_Surname, b.ChildID, c.Child_Forename, c.Child_Surname, c.Child_Birthday
+		FROM Client a
+		INNER JOIN ClientChild b ON a.ClientID = b.ClientID
+		INNER JOIN Child c ON b.ChildID = c.ChildID
+		WHERE CAST(TO_CHAR(c.Child_Birthday, 'mm') AS INT) BETWEEN CAST(TO_CHAR(SYSDATE, 'mm') AS INT) 
+			  AND CAST(TO_CHAR(ADD_MONTHS(SYSDATE, 3), 'mm') AS INT)
+		ORDER BY c.Child_Birthday, a.ClientID, c.Child_Surname, c.Child_Forename;
+		
+	3)	SELECT  a.Equip_Name, COUNT(b.EquipmentID), 
+				CAST(ROUND(((COUNT(b.EquipmentID)*1.0)/((SELECT COUNT(OrderID) FROM OrderedEquipment)*1.0)*100),2) AS DECIMAL(5,2)) AS "Percentage of Orders"
+		FROM Equipment a
+		LEFT OUTER JOIN OrderedEquipment b ON a.EquipmentID = b.EquipmentID
+		GROUP BY a.Equip_Name;
+		
+	4)	SELECT  a.ClientID, COUNT(a.OrderID), 
+				CAST(ROUND(((COUNT(a.OrderID)*1.0)/((SELECT COUNT(OrderID) FROM OrderPlaced)*1.0)*100),2) AS DECIMAL(5,2)) AS "Customer Percentage"
+		FROM OrderPlaced a
+		GROUP BY a.ClientID
+		ORDER BY CAST(ROUND(((COUNT(a.OrderID)*1.0)/(4*1.0)*100),2) AS DECIMAL(5,2)) DESC;
+
+	5)	SELECT  a.Gender, COUNT(b.ChildID), 
+				CAST(ROUND(((COUNT(b.ChildID)*1.0)/((SELECT COUNT(OrderID) FROM OrderPlaced)*1.0)*100),2) AS DECIMAL(5,2)) AS "Gender Breakdown"
+		FROM Child a
+		LEFT OUTER JOIN OrderChild b ON a.ChildID = b.ChildID
+		GROUP BY a.Gender;
+		
+	6)	SELECT  SUBSTR(a.Order_Date, 4, 3) AS Month, COUNT(a.OrderID) AS "Orders for Month", 
+				'£' || (SUM((b.P_Price * a.Guest_No)) + SUM(c.Total) + SUM(d.Total)) AS "Month's Worth of Orders"
+		FROM OrderPlaced a
+		INNER JOIN CateringPackage b ON a.PackageID = b.PackageID
+		LEFT OUTER JOIN (
+						  SELECT a.OrderID, SUM(a.Total) AS Total
+						  FROM (
+								SELECT a.OrderID, COUNT(a.EquipmentID) * b.Equip_Price AS Total
+								FROM OrderedEquipment a
+								INNER JOIN Equipment b ON a.EquipmentID = b.EquipmentID
+								GROUP BY a.OrderID, b.Equip_Price
+							  ) a
+						  GROUP BY a.OrderID
+						) c ON a.OrderID = c.OrderID
+		LEFT OUTER JOIN (
+						  SELECT a.OrderID, SUM(a.Total) AS Total
+						  FROM (
+								SELECT a.OrderID, COUNT(a.EntertainerID) * b.E_Price AS Total
+								FROM OrderedEntertainer a
+								INNER JOIN Entertainer b ON a.EntertainerID = b.EntertainerID
+								GROUP BY a.OrderID, b.E_Price
+							  ) a
+						  GROUP BY a.OrderID
+						) d ON a.OrderID = d.OrderID
+		WHERE SUBSTR(a.Order_Date, 8, 2) = '&Year'
+		GROUP BY SUBSTR(a.Order_Date, 4, 3);
+		
+	7)	SELECT Heard_About_Us_By, COUNT(Heard_About_Us_By) AS Count, 
+		ROUND(((COUNT(Heard_About_Us_By)*1.0)/((SELECT COUNT(Heard_About_Us_By) AS cnt FROM Client)*1.0)*100),2) AS "Percentage of Client Source"
+		FROM Client
+		GROUP BY Heard_About_Us_By;
+		
+	8)	SELECT '20' || SUBSTR(a.Order_Date, 8, 2) AS "Year", COUNT(a.OrderID) AS "Number of Orders"
+		FROM OrderPlaced a
+		WHERE SUBSTR(Order_Date, 8, 2) = '15'
+		GROUP BY '20' || SUBSTR(a.Order_Date, 8, 2)
+		UNION
+		SELECT '20' || SUBSTR(a.Order_Date, 8, 2) AS "Year", COUNT(a.OrderID) AS "Number of Orders"
+		FROM OrderPlaced a
+		WHERE SUBSTR(Order_Date, 8, 2) = '14'
+		GROUP BY '20' || SUBSTR(a.Order_Date, 8, 2)
+		UNION
+		SELECT  'Percentage Increase In Sales (%)', 
+				ROUND(((COUNT(a.OrderID)*1.0)/(CASE (SELECT COUNT(OrderID) FROM OrderPlaced WHERE SUBSTR(Order_Date, 8, 2) = '14') WHEN 0 THEN 1 ELSE (SELECT COUNT(OrderID) FROM OrderPlaced WHERE SUBSTR(Order_Date, 8, 2) = '14') END * 1.0)*100),2)
+		FROM OrderPlaced a
+		WHERE SUBSTR(Order_Date, 8, 2) = '15'
+		GROUP BY 'Percentage Increase In Sales (%)';
+		
+E)
+	1)	CREATE TRIGGER BirthdayCheck
+		BEFORE INSERT ON Child
+		FOR EACH ROW
+		BEGIN
+		  IF :NEW.Child_Birthday > SYSDATE
+		  THEN
+			RAISE_APPLICATION_ERROR(-2000, 'YOU HAVE ATTEMPTED TO INSERT A FUTURE DATE');
+		  END IF;
+		END;
+	
+	2) 	CREATE TRIGGER Client_OrderPlaced
+		AFTER INSERT ON OrderPlaced
+		FOR EACH ROW
+		DECLARE
+		  v_Count INT;
+		BEGIN
+		    SELECT CASE WHEN num_orders_placed >= 1 THEN num_orders_placed ELSE 0 END CASE
+			INTO v_Count
+			FROM Client
+			WHERE ClientID = :NEW.ClientID;
+			
+			UPDATE Client
+			SET Num_Orders_Placed = (v_Count + 1)
+			WHERE ClientID = :NEW.ClientID;
+		END;
+		
+F)	
+	1)	DROP TABLE Invoice;
+	
+	2)	DROP TABLE BRUInvoice;
+	
+	3)	DROP TABLE OrderChild;
+	
+	4)	DROP TABLE OrderedEntertainer;
+	
+	5)	DROP TABLE OrderedEquipment;
+	
+	6)	DROP TABLE OrderPlaced;
+	
+	7)	DROP TABLE Entertainer;
+	
+	8)	DROP TABLE Equipment;
+	
+	9)	DROP TABLE CateringPackage;
+	
+	10)	DROP TABLE Theme;
+	
+	11) DROP TABLE Enquiry;
+	
+	12)	DROP TABLE ClientChild;
+	
+	13)	DROP TABLE Child;
+	
+	14)	DROP TABLE ClientBankInformation;
+	
+	15)	DROP TABLE Client;
+	
+	16)	DROP TABLE StaffPaymentInfo;
+	
+	17)	DROP TABLE Staff;
